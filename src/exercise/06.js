@@ -26,6 +26,32 @@ function toggleReducer(state, {type, initialState}) {
   }
 }
 
+function useControlledWarning(variable, onChange, readOnly) {
+  const variableIsControlled = variable != null
+  const hasOnChange = onChange != null
+
+  const variableWasControlled = React.useRef(variableIsControlled)
+
+  React.useEffect(() => {
+    warning(
+      !(variableIsControlled && !variableWasControlled.current),
+      'Changing from uncontroled to controlled!!!',
+    )
+    warning(
+      !(!variableIsControlled && variableWasControlled.current),
+      'Changing from controled to uncontrolled!!!',
+    )
+  }, [variableIsControlled, variableWasControlled])
+
+  React.useEffect(() => {
+    warning(
+      !(variableIsControlled && !hasOnChange && !readOnly),
+      'Passing variable without onChange',
+    )
+  }, [variableIsControlled, hasOnChange, readOnly])
+  return [variableIsControlled, hasOnChange]
+}
+
 function useToggle({
   initialOn = false,
   reducer = toggleReducer,
@@ -35,26 +61,12 @@ function useToggle({
 } = {}) {
   const {current: initialState} = React.useRef({on: initialOn})
   const [state, dispatch] = React.useReducer(reducer, initialState)
-  const [controlled, setControlled] = React.useState({
-    onIsControlled: controlledOn != null,
-    hasOnChange: onChange != null,
-  })
 
-  const {onIsControlled,hasOnChange} = controlled
-
-  const onWasControlled = React.useRef()
-
-  React.useEffect(() => {
-    if (onIsControlled && !hasOnChange && !readOnly) {
-      warning(false, 'Passing on without onChange')
-    }
-    if (onIsControlled !== (controlledOn != null)) {
-      warning(
-        false,
-        'changing from controlled to uncontrolled',
-      )
-    }
-  }, [onIsControlled, hasOnChange, readOnly, controlledOn])
+  const [onIsControlled, hasOnChange] = useControlledWarning(
+    controlledOn,
+    onChange,
+    readOnly,
+  )
 
   const on = onIsControlled ? controlledOn : state.on
 
@@ -112,7 +124,7 @@ function App() {
     if (action.type === actionTypes.toggle && timesClicked > 4) {
       return
     }
-    setBothOn(timesClicked > 2 ? null : state.on)
+    setBothOn(state.on)
     setTimesClicked(c => c + 1)
   }
 
